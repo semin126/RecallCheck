@@ -92,7 +92,8 @@
   .q-item{display:flex;gap:11px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}
   .q-item:last-child{border-bottom:0}
   .q-item:hover{background:var(--wash)}
-  .q-item input{margin-top:8px;width:17px;height:17px;accent-color:var(--green);flex:none}
+  .q-item input[type=checkbox]{margin-top:8px;width:17px;height:17px;accent-color:var(--green);flex:none}
+  .q-item input[type=text]{font-size:.94rem;padding:7px 11px}
   .q-item .num{color:var(--ink-soft);font-variant-numeric:tabular-nums;flex:none;min-width:1.9em}
   .q-item .txt{flex:1}
   .q-item .txt small{display:block;color:var(--ink-soft);font-size:.86rem}
@@ -627,7 +628,7 @@ function renderDetail(){
     </div>`;
   document.getElementById('back').onclick=()=>{state.si=-1;go('home');};
   document.getElementById('edit').onclick=()=>editExisting(state.si);
-  app.querySelectorAll('.q-item input').forEach(cb=>cb.onchange=()=>{
+  app.querySelectorAll('.q-item input[type=checkbox]').forEach(cb=>cb.onchange=()=>{
     const i=+cb.dataset.i; cb.checked?state.sel.add(i):state.sel.delete(i);
     app.querySelector('.cnt').textContent=state.sel.size+' / '+s.items.length+'문항';
   });
@@ -761,8 +762,11 @@ function renderEdit(){
               </div>
               <textarea data-q="${i}" rows="2" placeholder="질문">${esc(it.q)}</textarea>
               <textarea data-a="${i}" rows="2" placeholder="답안">${esc(it.a)}</textarea>
-              <input type="text" data-key="${i}" placeholder="핵심 요소 (쉼표로 구분, 없으면 비워두세요)"
-                     value="${esc((it.key||[]).join(', '))}">
+              <label style="display:block;font-size:.86rem;color:var(--ink-soft);margin-top:2px">
+                핵심 요소 <span style="font-weight:400">— 꼭 들어가야 하는 말. 쉼표로 구분, 없으면 비워두세요</span>
+                <input type="text" data-key="${i}" placeholder="예) 국민주권, 임시정부"
+                       value="${esc((it.key||[]).join(', '))}">
+              </label>
             </div>`).join('')}
         </div>
       </div>
