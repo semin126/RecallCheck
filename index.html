@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RecallCheck — 암기 채점기</title>
+<style>
+  :root{
+    --ink:#22262b;
+    --ink-soft:#5c6470;
+    --line:#dfe3e0;
+    --paper:#ffffff;
+    --wash:#f4f7f4;
+    --green:#1f7a4d;
+    --green-soft:#e6f2ea;
+    --orange:#d9761f;
+    --orange-soft:#fdf0e2;
+    --yellow:#f0c033;
+    --yellow-soft:#fdf7e0;
+    --gray-soft:#eef0ef;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+    font-size:16.5px;
+    line-height:1.8;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:0 22px 90px}
+
+  /* 머리말: 공책 위쪽 여백선 느낌 */
+  header{border-bottom:2px solid var(--green);margin-bottom:26px}
+  .head-in{max-width:860px;margin:0 auto;padding:20px 22px 14px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .brand{font-size:1.22rem;font-weight:700;letter-spacing:-.02em}
+  .brand span{color:var(--green)}
+  .crumbs{color:var(--ink-soft);font-size:.9rem}
+  .crumbs b{color:var(--ink);font-weight:600}
+
+  h2{font-size:1.26rem;margin:0 0 4px;letter-spacing:-.02em}
+  h3{font-size:1.02rem;margin:26px 0 10px}
+  p.lead{color:var(--ink-soft);margin:0 0 22px}
+
+  button{font-family:inherit;font-size:inherit;cursor:pointer}
+  .btn{border:1.5px solid var(--line);background:#fff;color:var(--ink);
+       border-radius:9px;padding:9px 16px;line-height:1.5}
+  .btn:hover{border-color:var(--ink-soft)}
+  .btn:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+  .btn-go{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+  .btn-go:hover{background:#1a6741;border-color:#1a6741}
+  .btn-mark{background:var(--orange);border-color:var(--orange);color:#fff;font-weight:600}
+  .btn-mark:hover{background:#c06716;border-color:#c06716}
+  .btn-sm{padding:5px 11px;font-size:.88rem;border-radius:7px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  .link{background:none;border:0;color:var(--green);padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+
+  input[type=text],textarea,select{
+    font-family:inherit;font-size:inherit;color:var(--ink);
+    border:1.5px solid var(--line);border-radius:9px;padding:10px 13px;background:#fff;width:100%;
+  }
+  textarea{line-height:1.8;resize:vertical}
+  input[type=text]:focus,textarea:focus,select:focus{outline:none;border-color:var(--green)}
+
+  /* 세트 카드: 색인표처럼 왼쪽 굵은 선 */
+  .sets{display:grid;gap:11px;margin:18px 0}
+  .set{display:flex;justify-content:space-between;align-items:center;gap:12px;
+       width:100%;text-align:left;background:#fff;border:1.5px solid var(--line);
+       border-left:6px solid var(--green);border-radius:10px;padding:14px 16px}
+  .set:hover{background:var(--wash)}
+  .set .nm{font-weight:600}
+  .set .ct{color:var(--ink-soft);font-size:.88rem;white-space:nowrap}
+
+  .empty{border:1.5px dashed var(--line);border-radius:12px;padding:24px 22px;background:var(--wash)}
+  .empty pre{background:#fff;border:1px solid var(--line);border-radius:8px;padding:12px 14px;
+             overflow-x:auto;font-size:.88rem;line-height:1.75;margin:8px 0 0}
+
+  /* 할 일 고르기 */
+  .tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px;margin:14px 0 8px}
+  .tool{text-align:left;background:#fff;border:1.5px solid var(--line);border-radius:11px;padding:14px 16px}
+  .tool:hover{background:var(--wash);border-color:var(--ink-soft)}
+  .tool b{display:block;font-size:1.02rem;margin-bottom:2px}
+  .tool span{color:var(--ink-soft);font-size:.9rem;line-height:1.65;display:block}
+
+  .picker{border:1.5px solid var(--line);border-radius:11px;margin:14px 0 4px;overflow:hidden}
+  .picker-top{display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+              padding:11px 14px;background:var(--wash);border-bottom:1.5px solid var(--line)}
+  .picker-top .cnt{margin-left:auto;color:var(--ink-soft);font-size:.9rem}
+  .q-list{max-height:330px;overflow-y:auto}
+  .q-item{display:flex;gap:11px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--line)}
+  .q-item:last-child{border-bottom:0}
+  .q-item:hover{background:var(--wash)}
+  .q-item input{margin-top:8px;width:17px;height:17px;accent-color:var(--green);flex:none}
+  .q-item .num{color:var(--ink-soft);font-variant-numeric:tabular-nums;flex:none;min-width:1.9em}
+  .q-item .txt{flex:1}
+  .q-item .txt small{display:block;color:var(--ink-soft);font-size:.86rem}
+
+  /* 플래시카드 */
+  .card{border:1.5px solid var(--line);border-left:6px solid var(--yellow);border-radius:12px;
+        padding:30px 26px;min-height:210px;display:flex;flex-direction:column;justify-content:center;
+        background:#fff;text-align:center}
+  .card.open{border-left-color:var(--green);background:var(--green-soft)}
+  .card .qt{font-size:1.14rem;font-weight:600;margin-bottom:14px}
+  .card .at{color:var(--ink);border-top:1px dashed var(--line);padding-top:14px;text-align:left}
+  .card .hint{color:var(--ink-soft);font-size:.9rem}
+  .prog{height:5px;background:var(--gray-soft);border-radius:99px;margin:16px 0 12px;overflow:hidden}
+  .prog i{display:block;height:100%;background:var(--green);border-radius:99px}
+
+  /* 문서 읽기 */
+  .doc{border-top:1px solid var(--line)}
+  .doc .d{border-bottom:1px solid var(--line);padding:14px 0 14px 16px;border-left:3px solid var(--gray-soft)}
+  .doc .d b{display:block}
+  .doc .d span{color:var(--ink-soft)}
+
+  /* 채점 */
+  .res{border:1.5px solid var(--line);border-radius:11px;padding:15px 17px;margin-bottom:11px}
+  .res.ok{border-left:6px solid var(--green)}
+  .res.half{border-left:6px solid var(--yellow)}
+  .res.no{border-left:6px solid var(--orange)}
+  .res .top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+  .res .vd{font-weight:700}
+  .res.ok .vd{color:var(--green)} .res.half .vd{color:#a9820e} .res.no .vd{color:var(--orange)}
+  .res .sim{color:var(--ink-soft);font-size:.9rem;font-variant-numeric:tabular-nums}
+  .res .qz{font-weight:600;margin-bottom:8px}
+  .res .mine{background:var(--wash);border-radius:8px;padding:10px 13px;margin:6px 0}
+  .res .ansbox{background:var(--green-soft);border-radius:8px;padding:10px 13px;margin-top:8px}
+  .sub{background:var(--orange-soft);color:var(--orange);border-bottom:2px solid var(--orange);
+       border-radius:3px;padding:0 2px}
+  .extra{color:var(--ink-soft);text-decoration:line-through}
+  .miss{background:var(--yellow-soft);border-bottom:2px solid var(--yellow);border-radius:3px;
+        padding:0 3px;color:#8a6a05}
+  /* 무엇이 틀렸는지 먼저 */
+  .errhead{font-weight:600;margin:2px 0 7px}
+  ul.errs{list-style:none;margin:0 0 12px;padding:0}
+  ul.errs li{position:relative;padding-left:15px;margin-bottom:3px;line-height:1.7}
+  ul.errs li:before{content:"";position:absolute;left:0;top:.72em;width:7px;height:7px;border-radius:50%}
+  ul.errs li.red:before{background:var(--orange)}
+  ul.errs li.yellow:before{background:var(--yellow)}
+  ul.errs li.gray:before{background:#b6bcc2}
+  ul.errs .tag{display:inline-block;min-width:6.4em;color:var(--ink-soft);font-size:.88rem}
+  ul.errs b{font-weight:600}
+  ul.errs s{color:var(--ink-soft)}
+  .okline{color:var(--green);font-weight:600;margin-bottom:8px}
+  .sbs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+  @media (max-width:620px){.sbs{grid-template-columns:1fr}}
+  .sbs .col{background:var(--wash);border-radius:9px;padding:9px 12px}
+  .sbs .col:first-child{background:var(--green-soft)}
+  .sbs .lbl{display:block;font-size:.84rem;color:var(--ink-soft);margin-bottom:3px}
+  .sbs .txt{line-height:1.85}
+  .done{background:var(--green-soft);border-left:5px solid var(--green);border-radius:0 10px 10px 0;
+        padding:14px 17px;margin:18px 0 12px;font-weight:600;color:var(--green)}
+  .ck{width:14px;height:14px;vertical-align:-2px;flex:none}
+  .ck-lg{width:17px;height:17px;vertical-align:-3px}
+  .hist{border:1.5px solid var(--line);border-radius:11px;overflow:hidden;margin:14px 0 4px}
+  .hist .hrow{display:flex;gap:12px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .hist .hrow:last-child{border-bottom:0}
+  .hist .when{color:var(--ink-soft);font-size:.88rem;min-width:8.6em}
+  .hist .sc{font-weight:600}
+  .hist .sc small{font-weight:400;color:var(--ink-soft)}
+  .hist .hrow button{margin-left:auto}
+  .grid{display:flex;flex-wrap:wrap;gap:5px;padding:4px 14px 13px}
+  .grid span{display:inline-flex;align-items:center;justify-content:center;min-width:27px;height:27px;
+             border-radius:7px;font-size:.85rem;font-variant-numeric:tabular-nums}
+  .grid .g-ok{background:var(--green-soft);color:var(--green);font-weight:600}
+  .grid .g-half{background:var(--yellow-soft);color:#8a6a05}
+  .grid .g-no{background:var(--orange-soft);color:var(--orange)}
+  .opts{border:1.5px solid var(--line);border-radius:11px;padding:14px 16px;margin:12px 0}
+  .opts label{display:inline-flex;align-items:center;gap:7px;margin:5px 18px 5px 0;font-size:.95rem}
+  .opts input[type=checkbox]{width:17px;height:17px;accent-color:var(--green)}
+  .score{background:var(--wash);border-radius:11px;padding:16px 18px;margin-bottom:18px}
+  .score b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+
+  /* DP 표 */
+  .dpwrap{overflow-x:auto;margin-top:10px}
+  table.dp{border-collapse:collapse;font-size:.8rem;font-variant-numeric:tabular-nums}
+  table.dp th,table.dp td{border:1px solid var(--line);padding:3px 7px;text-align:center;min-width:30px}
+  table.dp th{background:var(--wash);font-weight:600;font-size:.78rem}
+  table.dp td.path{background:var(--green-soft);font-weight:700;color:var(--green)}
+
+  /* 사진 채점 표 */
+  table.sheet{width:100%;border-collapse:collapse}
+  table.sheet th,table.sheet td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}
+  table.sheet th{font-size:.88rem;color:var(--ink-soft);font-weight:600}
+  table.sheet td.n{color:var(--ink-soft);font-variant-numeric:tabular-nums;width:2.4em}
+  table.sheet textarea{min-height:46px;padding:7px 10px;border-radius:7px}
+  .thumbs{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}
+  .thumbs figure{margin:0;width:104px}
+  .thumbs img{width:104px;height:104px;object-fit:cover;border-radius:9px;border:1.5px solid var(--line);display:block}
+  .thumbs figcaption{font-size:.78rem;color:var(--ink-soft);text-align:center;margin-top:3px;
+                     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .note{background:var(--yellow-soft);border-left:4px solid var(--yellow);border-radius:0 9px 9px 0;
+        padding:12px 15px;margin:14px 0;font-size:.94rem;line-height:1.75}
+  .warn{background:var(--orange-soft);border-left:4px solid var(--orange);border-radius:0 9px 9px 0;
+        padding:12px 15px;margin:12px 0;font-size:.94rem}
+  .spin{display:inline-block;width:15px;height:15px;border:2.5px solid var(--gray-soft);
+        border-top-color:var(--green);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation-duration:2.4s}}
+
+  .seg{display:inline-flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:7px 15px;color:var(--ink-soft)}
+  .seg button.on{background:var(--green);color:#fff;font-weight:600}
+  .foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+        color:var(--ink-soft);font-size:.88rem}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="brand">Recall<span>Check</span>
+      <span style="font-weight:400;color:var(--ink-soft);font-size:.86rem;margin-left:5px">암기 채점기</span></div>
+    <div class="crumbs" id="crumbs"></div>
+  </div>
+</header>
+<div class="wrap"><div id="app"></div>
+  <div class="foot">편집 거리(레벤슈타인) 알고리즘으로 채점합니다. 채점은 AI가 아니라 계산이라, 같은 답이면 언제나 같은 점수가 나옵니다.</div>
+</div>
+<input type="file" id="fileInput" accept=".txt,.tsv,.csv,.md,.json" class="hide">
+<input type="file" id="photoInput" accept="image/*,application/pdf" multiple class="hide">
+<input type="file" id="camInput" accept="image/*" capture="environment" class="hide">
+
+<script>
+/* =========================================================
+   0. 저장소 (클로드 아티팩트 / 로컬 파일 / 메모리 모두 대응)
+   ========================================================= */
+const Store=(()=>{
+  const KEY='memgrader:sets'; let mem=null;
+  const hasW = typeof window!=='undefined' && window.storage && typeof window.storage.get==='function';
+  let hasLS=false; try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); hasLS=true; }catch(e){}
+  return {
+    async load(){
+      if(hasW){ try{ const r=await window.storage.get(KEY); return r&&r.value?JSON.parse(r.value):null; }catch(e){ return null; } }
+      if(hasLS){ try{ const v=localStorage.getItem(KEY); return v?JSON.parse(v):null; }catch(e){ return null; } }
+      return mem;
+    },
+    async save(sets){
+      const s=JSON.stringify(sets); mem=sets;
+      if(hasW){ try{ await window.storage.set(KEY,s); return; }catch(e){} }
+      if(hasLS){ try{ localStorage.setItem(KEY,s); }catch(e){} }
+    }
+  };
+})();
+
+/* =========================================================
+   1. 채점 엔진 — 가중 편집 거리, 라이브러리 없이 직접 구현
+      기본은 레벤슈타인이고, 핵심 요소·숫자·기호에 더 큰 비용을 준다.
+   ========================================================= */
+function normalize(s){ return String(s==null?'':s).replace(/\s+/g,' ').trim(); }
+
+const PRESETS={
+  general:{label:'일반 서술형',  unit:'word',keepCase:false,keepPunct:false,numStrict:true, symFatal:false,strict:'normal'},
+  english:{label:'영어 단어·문장',unit:'word',keepCase:false,keepPunct:false,numStrict:true, symFatal:false,strict:'normal'},
+  math   :{label:'수학·기호',    unit:'char',keepCase:true, keepPunct:true, numStrict:true, symFatal:true, strict:'hard'},
+  exact  :{label:'법조문·경전',  unit:'char',keepCase:true, keepPunct:true, numStrict:true, symFatal:true, strict:'hard'}
+};
+const BANDS={loose:[80,62],normal:[90,70],hard:[97,85]};
+const STRICT_LABEL={loose:'관대',normal:'보통',hard:'엄격'};
+const KW_COST=3, NUM_COST=2;
+const PUNCT=/[.,!?;:'"\u201c\u201d\u2018\u2019()\[\]·…]/g;
+const MATHSYM=/[+\-*/=<>±≤≥≠∑∫√^%]/;
+
+function opts(s){
+  s.opts=Object.assign({},PRESETS.general,s.opts||{});
+  return s.opts;
+}
+function prep(s,o){
+  let t=String(s==null?'':s);
+  if(!o.keepCase) t=t.toLowerCase();
+  if(!o.keepPunct) t=t.replace(PUNCT,' ');
+  return t.replace(/\s+/g,' ').trim();
+}
+function tokensOf(t,unit){
+  const out=[];
+  if(unit==='char'){ for(let i=0;i<t.length;i++) if(t[i]!==' ') out.push({v:t[i],s:i,e:i+1}); }
+  else { let i=0; t.split(' ').forEach(w=>{ if(w) out.push({v:w,s:i,e:i+w.length}); i+=w.length+1; }); }
+  return out;
+}
+function keyMask(t,keys,o){
+  const mask=new Array(t.length).fill(false);
+  (keys||[]).forEach(k=>{
+    const kk=prep(k,o); if(!kk) return;
+    let from=0,i;
+    while((i=t.indexOf(kk,from))>=0){ for(let j=i;j<i+kk.length;j++) mask[j]=true; from=i+kk.length; }
+  });
+  return mask;
+}
+function weightsOf(toks,mask,o){
+  return toks.map(tk=>{
+    for(let i=tk.s;i<tk.e;i++) if(mask[i]) return KW_COST;
+    if(o.numStrict&&(/\d/.test(tk.v)||MATHSYM.test(tk.v))) return NUM_COST;
+    return 1;
+  });
+}
+// dp[i][j] = 정답 앞 i개를 내 답 앞 j개로 바꾸는 최소 편집 비용
+function editOpsW(A,B,wA){
+  const n=A.length,m=B.length;
+  const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+  for(let i=1;i<=n;i++) dp[i][0]=dp[i-1][0]+wA[i-1];
+  for(let j=1;j<=m;j++) dp[0][j]=j;
+  for(let i=1;i<=n;i++) for(let j=1;j<=m;j++){
+    const same=A[i-1]===B[j-1];
+    dp[i][j]=Math.min(
+      dp[i-1][j-1]+(same?0:Math.max(wA[i-1],1)),   // 그대로 두기 / 바꿔 쓰기
+      dp[i-1][j]+wA[i-1],                           // 빠뜨리기
+      dp[i][j-1]+1                                  // 덧붙이기
+    );
+  }
+  // 역추적: 어디를 고쳤는지 복원
+  let i=n,j=m; const ops=[],path=[[n,m]];
+  while(i>0||j>0){
+    const same=i>0&&j>0&&A[i-1]===B[j-1];
+    if(same&&dp[i][j]===dp[i-1][j-1]){ ops.push({t:'keep',a:A[i-1],b:B[j-1],w:wA[i-1]}); i--; j--; }
+    else if(i>0&&j>0&&dp[i][j]===dp[i-1][j-1]+Math.max(wA[i-1],1)){ ops.push({t:'sub',a:A[i-1],b:B[j-1],w:wA[i-1]}); i--; j--; }
+    else if(i>0&&dp[i][j]===dp[i-1][j]+wA[i-1]){ ops.push({t:'miss',a:A[i-1],w:wA[i-1]}); i--; }
+    else { ops.push({t:'extra',b:B[j-1],w:1}); j--; }
+    path.push([i,j]);
+  }
+  ops.reverse();
+  return {cost:dp[n][m],dp,ops,path};
+}
+function charDist(a,b){
+  const A=Array.from(a),B=Array.from(b),n=A.length,m=B.length;
+  const d=Array.from({length:n+1},(_,i)=>{const r=new Array(m+1).fill(0);r[0]=i;return r;});
+  for(let j=0;j<=m;j++) d[0][j]=j;
+  for(let i=1;i<=n;i++) for(let j=1;j<=m;j++)
+    d[i][j]=A[i-1]===B[j-1]?d[i-1][j-1]:1+Math.min(d[i-1][j-1],d[i-1][j],d[i][j-1]);
+  return d[n][m];
+}
+// 무엇을 틀렸는지 이름 붙이기
+function classify(op){
+  if(op.t==='miss')  return op.w>=KW_COST?{k:'key',label:'핵심 요소 빠짐',lv:'red'}:{k:'miss',label:'빠짐',lv:'red'};
+  if(op.t==='extra') return {k:'extra',label:'군더더기',lv:'gray'};
+  const a=op.a,b=op.b;
+  if(MATHSYM.test(a)||MATHSYM.test(b)) return {k:'sym',label:'기호 오류',lv:'red'};
+  if(/\d/.test(a)||/\d/.test(b))       return {k:'num',label:'숫자 오류',lv:'red'};
+  if(op.w>=KW_COST)                    return {k:'key',label:'핵심 요소 오류',lv:'red'};
+  const d=charDist(a,b), len=Math.max(Array.from(a).length,Array.from(b).length)||1;
+  if(d<=1||d/len<=0.34) return {k:'spell',label:'표현 차이',lv:'yellow'};
+  return {k:'word',label:'낱말 오류',lv:'red'};
+}
+function grade(correct,mine,o,keys){
+  const ct=prep(correct,o), mt=prep(mine,o);
+  const At=tokensOf(ct,o.unit), Bt=tokensOf(mt,o.unit);
+  const A=At.map(t=>t.v), B=Bt.map(t=>t.v);
+  const wA=weightsOf(At,keyMask(ct,keys,o),o);
+  if(!A.length) return {sim:0,verdict:'오답',ops:[],errs:[],cost:0,A,B,dp:null,path:[]};
+  const r=editOpsW(A,B,wA);
+  const denom=Math.max(wA.reduce((x,y)=>x+y,0),B.length,1);
+  const sim=Math.max(0,Math.round((1-r.cost/denom)*100));
+  const errs=r.ops.filter(op=>op.t!=='keep').map(op=>Object.assign({},op,classify(op)));
+  const band=BANDS[o.strict]||BANDS.normal;
+  let verdict = !B.length?'오답' : sim>=band[0]?'정답' : sim>=band[1]?'거의 맞음':'오답';
+  if(errs.some(e=>e.k==='key')&&verdict==='정답') verdict='거의 맞음';
+  if(o.symFatal&&errs.some(e=>e.k==='sym'||e.k==='num')) verdict='오답';
+  return {sim,verdict,ops:r.ops,errs,cost:r.cost,dp:r.dp,path:r.path,A,B};
+}
+
+/* =========================================================
+   2. 파일 파싱 / 유틸
+   ========================================================= */
+const CHECK='<svg class="ck" viewBox="0 0 24 24" role="img" aria-label="외운 문항">'+
+  '<circle cx="12" cy="12" r="11" fill="#6cbd1e"/>'+
+  '<path d="M7 12.4l3.3 3.3L17.2 8.8" fill="none" stroke="#fff" stroke-width="2.8" '+
+  'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function parseFile(text){
+  // 맨 앞이 #인 줄은 안내문으로 보고 무시 (양식 파일의 설명줄)
+  const lines=text.replace(/\r\n/g,'\n').replace(/^\uFEFF/,'').split('\n')
+                  .filter(l=>!/^\s*#/.test(l));
+  const nonEmpty=lines.filter(l=>l.trim()!=='');
+  const tabbed=nonEmpty.filter(l=>l.includes('\t')).length;
+  if(nonEmpty.length && tabbed>=nonEmpty.length/2){        // 탭 구분(TSV)
+    const items=[];
+    for(const line of lines){
+      if(!line.trim()) continue;
+      const idx=line.indexOf('\t'); if(idx<0) continue;
+      const q=line.slice(0,idx).trim(), a=line.slice(idx+1).replace(/\t/g,' ').trim();
+      if(q&&a) items.push({q,a});
+    }
+    return items;
+  }
+  const blocks=[]; let cur=[];                              // 빈 줄로 구분
+  for(const line of lines){
+    if(!line.trim()){ if(cur.length){ blocks.push(cur); cur=[]; } } else cur.push(line);
+  }
+  if(cur.length) blocks.push(cur);
+  const items=[];
+  for(const bl of blocks){
+    if(bl.length<2) continue;
+    const q=bl[0].trim(), a=bl.slice(1).join(' ').trim();
+    if(q&&a) items.push({q,a});
+  }
+  return items;
+}
+
+function answerLines(ans){
+  const len=normalize(ans).length;
+  return Math.max(2,Math.min(9,Math.ceil(len/26)+1));
+}
+function download(name,text,mime){
+  const b=new Blob(['\uFEFF'+text],{type:mime||'text/plain;charset=utf-8'});
+  const u=URL.createObjectURL(b), a=document.createElement('a');
+  a.href=u; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(u);},600);
+}
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'. '+(d.getMonth()+1)+'. '+d.getDate()+'.';};
+
+/* 세트 양식 파일 */
+function templateTxt(){
+  return ['# 빈 줄로 구분하는 양식입니다. 메모장으로 고치면 됩니다.',
+  '# 첫 줄에 질문, 다음 줄에 답안을 쓰고, 문제와 문제 사이는 빈 줄로 띄우세요.',
+  '# 답안이 길면 여러 줄로 써도 한 답으로 합쳐집니다.',
+  '# 맨 앞에 #이 있는 줄은 읽지 않으니 그대로 두셔도 됩니다.',
+  '# 파일 이름이 세트 이름이 되니, 저장할 때 이름을 바꿔 주세요.','',
+  '3·1 운동의 의의를 서술하시오.','전 민족이 참여한 최대 규모의 독립운동이다.','',
+  '세포막의 기능을 설명하시오.','물질의 출입을 조절해 내부를 일정하게 유지한다.','',
+  '여기에 질문을 쓰세요.','여기에 답안을 쓰세요.',''].join('\r\n');
+}
+function templateTsv(){
+  return ['# 엑셀에서 열어 A열에 질문, B열에 답안을 쓰세요.',
+  '# 저장할 때 파일 형식을 "텍스트(탭으로 분리)"로 고르면 됩니다.',
+  '# 맨 앞이 #인 줄은 읽지 않습니다.',
+  '3·1 운동의 의의를 서술하시오.\t전 민족이 참여한 최대 규모의 독립운동이다.',
+  '세포막의 기능을 설명하시오.\t물질의 출입을 조절해 내부를 일정하게 유지한다.',
+  '여기에 질문을 쓰세요.\t여기에 답안을 쓰세요.'].join('\r\n');
+}
+
+/* =========================================================
+   3. 상태
+   ========================================================= */
+const state={
+  sets:[], view:'home', si:-1,
+  sel:new Set(), shuffle:false, mode:'word',
+  order:[], idx:0, flipped:false, practiceMode:'flash',
+  answers:[], results:[], resultTitle:'',
+  print:{withAnswer:true},
+  edit:{si:-1,name:'',items:[],bulk:false,bulkText:''},
+  photo:{files:[],rows:[],busy:false,msg:'',key:'',done:false}
+};
+const app=document.getElementById('app');
+const activeSet=()=>state.si>=0?state.sets[state.si]:null;
+
+function go(v){ state.view=v; window.scrollTo(0,0); render(); }
+async function persist(){ await Store.save(state.sets); }
+
+/* 선택된 문항으로 진행 순서 만들기 */
+function buildOrder(){
+  let arr=[...state.sel].sort((a,b)=>a-b);
+  if(!arr.length){ const s=activeSet(); arr=s?s.items.map((_,i)=>i):[]; }
+  if(state.shuffle){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+  state.order=arr; state.idx=0; state.flipped=false;
+  state.answers=new Array(arr.length).fill('');
+}
+
+/* =========================================================
+   4. 화면
+   ========================================================= */
+function render(){
+  const s=activeSet();
+  document.getElementById('crumbs').innerHTML =
+    state.view==='home' ? ''
+    : state.view==='edit' ? (state.edit.si>=0?'<b>세트 고치기</b>':'<b>세트 만들기</b>')
+    : '<b>'+esc(s?s.name:'')+'</b> · '+({
+      detail:'무엇을 할까요',practice:'연습',test:'테스트',result:'채점 결과',
+      print:'시험지 만들기',photo:'사진으로 채점'}[state.view]||'');
+  ({home:renderHome,detail:renderDetail,practice:renderPractice,test:renderTest,
+    result:renderResult,print:renderPrint,photo:renderPhoto,edit:renderEdit}[state.view]||renderHome)();
+}
+
+/* ---------- 홈 ---------- */
+function renderHome(){
+  if(!state.sets.length){
+    app.innerHTML=`
+      <h2>문제 세트를 만들어 시작하세요</h2>
+      <p class="lead">질문과 답안이 담긴 텍스트 파일을 올리면 세트가 됩니다. 파일 이름이 세트 이름이 돼요.</p>
+      <div class="empty">
+        <b>방법 1 — 빈 줄로 구분</b>
+        <div style="color:var(--ink-soft);font-size:.92rem">첫 줄에 질문, 다음 줄에 답안, 문제 사이는 빈 줄. 메모장으로 충분해요.</div>
+        <pre>3·1 운동의 의의를 서술하시오.
+전 민족이 참여한 최대 규모의 독립운동이다.
+
+세포막의 기능을 설명하시오.
+물질의 출입을 조절해 내부를 일정하게 유지한다.</pre>
+        <b style="display:block;margin-top:18px">방법 2 — 탭 구분(TSV)</b>
+        <div style="color:var(--ink-soft);font-size:.92rem">엑셀에서 첫 칸에 질문, 옆 칸에 답안을 쓰고 "텍스트(탭으로 분리)"로 저장하세요.</div>
+      </div>
+      ${homeActions(true)}`;
+    bindHomeActions();
+    return;
+  }
+  app.innerHTML=`
+    <h2>문제 세트</h2>
+    <p class="lead">연습할 세트를 고르세요. 세트 안에서 원하는 문항만 골라 풀 수 있어요.</p>
+    <div class="sets">${state.sets.map((s,i)=>`
+      <button class="set" data-i="${i}">
+        <span class="nm">${esc(s.name)}</span>
+        <span class="ct">${(s.perfect||[]).length
+          ? CHECK+' '+(s.perfect||[]).length+' / '+s.items.length
+          : s.items.length+'문제'}</span>
+      </button>`).join('')}</div>
+    <div style="color:var(--ink-soft);font-size:.88rem;margin-top:-6px">
+      ${CHECK} 표시는 유사도 100%로 맞힌 적이 있는 문항 수예요.</div>
+    ${homeActions(false)}`;
+  app.querySelectorAll('.set').forEach(el=>el.onclick=()=>{
+    state.si=+el.dataset.i;
+    state.sel=new Set(state.sets[state.si].items.map((_,i)=>i));
+    go('detail');
+  });
+  bindHomeActions();
+}
+
+function homeActions(first){
+  return `
+    <div class="row" style="margin-top:${first?22:18}px">
+      <button class="btn btn-go" id="mk">직접 만들기</button>
+      <button class="btn" id="up">파일 올리기</button>
+      <button class="btn" id="sample">예제 세트 ${first?'로 둘러보기':'추가'}</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span style="color:var(--ink-soft);font-size:.92rem">양식 파일 받기</span>
+      <button class="btn btn-sm" id="tt">메모장용 (.txt)</button>
+      <button class="btn btn-sm" id="ts">엑셀용 (.tsv)</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <span style="color:var(--ink-soft);font-size:.92rem">다른 기기로 옮기기</span>
+      <button class="btn btn-sm" id="ex">모든 세트 내보내기 (.json)</button>
+      <button class="btn btn-sm" id="im">세트 불러오기</button>
+    </div>`;
+}
+function bindHomeActions(){
+  document.getElementById('mk').onclick=newEdit;
+  document.getElementById('up').onclick=()=>fileInput.click();
+  document.getElementById('sample').onclick=addSample;
+  document.getElementById('tt').onclick=()=>download('문제세트_양식.txt',templateTxt(),'text/plain;charset=utf-8');
+  document.getElementById('ts').onclick=()=>download('문제세트_양식.tsv',templateTsv(),'text/tab-separated-values;charset=utf-8');
+  const ex=document.getElementById('ex');
+  if(ex) ex.onclick=()=>{
+    if(!state.sets.length){ alert('내보낼 세트가 없어요.'); return; }
+    download('암기세트_'+new Date().toISOString().slice(0,10)+'.json',
+             JSON.stringify(state.sets,null,1),'application/json;charset=utf-8');
+  };
+  const im=document.getElementById('im');
+  if(im) im.onclick=()=>fileInput.click();
+}
+
+/* ---------- 세트 상세: 문항 고르기 + 할 일 ---------- */
+function renderDetail(){
+  const s=activeSet(), o=opts(s);
+  app.innerHTML=`
+    <div class="row" style="justify-content:space-between">
+      <button class="link" id="back">← 세트 목록</button>
+      <button class="btn btn-sm" id="edit">세트 고치기</button>
+    </div>
+    <h2>${esc(s.name)}</h2>
+    <p class="lead">풀 문항을 고른 뒤 아래에서 방식을 고르세요.</p>
+
+    <div class="picker">
+      <div class="picker-top">
+        <button class="btn btn-sm" id="all">전체 선택</button>
+        <button class="btn btn-sm" id="none">전체 해제</button>
+        <button class="btn btn-sm" id="wrong">지난 오답만</button>
+        <button class="btn btn-sm" id="notyet">아직 못 외운 것만</button>
+        <label class="row" style="gap:6px;margin-left:4px">
+          <input type="checkbox" id="shuf" ${state.shuffle?'checked':''} style="width:17px;height:17px;accent-color:var(--green)">
+          <span style="font-size:.92rem">순서 섞기</span>
+        </label>
+        <span class="cnt">${state.sel.size} / ${s.items.length}문항</span>
+      </div>
+      <div class="q-list">${s.items.map((it,i)=>`
+        <label class="q-item">
+          <input type="checkbox" data-i="${i}" ${state.sel.has(i)?'checked':''}>
+          <span class="num">${(s.perfect||[]).indexOf(i)>=0?CHECK:''}${i+1}</span>
+          <span class="txt">${esc(it.q)}<small>${esc(it.a)}${(it.key||[]).length?' · 핵심: '+esc(it.key.join(', ')):''}</small></span>
+        </label>`).join('')}</div>
+    </div>
+
+    <div class="tools">
+      <button class="tool" id="t1"><b>연습하기</b><span>플래시카드로 넘겨보거나, 문서처럼 쭉 읽어요.</span></button>
+      <button class="tool" id="t2"><b>테스트</b><span>답을 타이핑하면 편집 거리로 채점해요.</span></button>
+      <button class="tool" id="t3"><b>시험지 만들기</b><span>답 있는 버전과 빈칸 버전을 인쇄하거나 파일로 받아요.</span></button>
+      <button class="tool" id="t4"><b>사진으로 채점</b><span>손으로 푼 답안지를 찍어 올리면 옮겨 적어 채점해요.</span></button>
+    </div>
+
+    ${histHTML(s)}
+
+    <h3>채점 기준</h3>
+    <p style="color:var(--ink-soft);font-size:.93rem;margin:0 0 10px">
+      무엇을 외우는지에 따라 맞고 틀림의 기준이 달라요. 분야를 고르면 아래 항목이 알맞게 맞춰집니다.</p>
+    <div class="row" style="margin-bottom:4px">
+      ${Object.keys(PRESETS).map(p=>`
+        <button class="btn btn-sm ${o.preset===p?'btn-go':''}" data-ps="${p}">${PRESETS[p].label}</button>`).join('')}
+    </div>
+    <div class="opts">
+      <div class="row" style="margin-bottom:8px">
+        <div class="seg">
+          <button class="${o.unit==='word'?'on':''}" data-u="word">단어 단위</button>
+          <button class="${o.unit==='char'?'on':''}" data-u="char">글자 단위</button>
+        </div>
+        <span style="color:var(--ink-soft);font-size:.9rem">
+          ${o.unit==='word'?'띄어쓰기로 나눠 비교해요. 조사만 달라도 한 단어 차이로 봅니다.'
+                           :'띄어쓰기를 무시하고 글자로 비교해요. 손글씨와 수식에 알맞아요.'}
+        </span>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <span style="color:var(--ink-soft);font-size:.9rem;margin-right:4px">엄격도</span>
+        <div class="seg">
+          ${['loose','normal','hard'].map(k=>`
+            <button class="${o.strict===k?'on':''}" data-st="${k}">${STRICT_LABEL[k]}</button>`).join('')}
+        </div>
+        <span style="color:var(--ink-soft);font-size:.9rem">
+          유사도 ${BANDS[o.strict][0]}% 이상 정답, ${BANDS[o.strict][1]}% 이상 거의 맞음</span>
+      </div>
+      <div>
+        <label><input type="checkbox" data-o="keepCase" ${o.keepCase?'checked':''}>대소문자 구분</label>
+        <label><input type="checkbox" data-o="keepPunct" ${o.keepPunct?'checked':''}>구두점 구분</label>
+        <label><input type="checkbox" data-o="numStrict" ${o.numStrict?'checked':''}>숫자·기호를 더 중요하게</label>
+        <label><input type="checkbox" data-o="symFatal" ${o.symFatal?'checked':''}>숫자·기호가 틀리면 오답</label>
+      </div>
+      <div style="color:var(--ink-soft);font-size:.89rem;margin-top:6px">
+        문항마다 지정한 핵심 요소는 다른 말보다 ${KW_COST}배 무겁게 칩니다. 핵심 요소가 빠지면 정답 처리되지 않아요.
+        핵심 요소는 "세트 고치기"에서 넣습니다.</div>
+    </div>`;
+  document.getElementById('back').onclick=()=>{state.si=-1;go('home');};
+  document.getElementById('edit').onclick=()=>editExisting(state.si);
+  app.querySelectorAll('.q-item input').forEach(cb=>cb.onchange=()=>{
+    const i=+cb.dataset.i; cb.checked?state.sel.add(i):state.sel.delete(i);
+    app.querySelector('.cnt').textContent=state.sel.size+' / '+s.items.length+'문항';
+  });
+  document.getElementById('all').onclick=()=>{state.sel=new Set(s.items.map((_,i)=>i));render();};
+  document.getElementById('none').onclick=()=>{state.sel=new Set();render();};
+  document.getElementById('wrong').onclick=()=>{
+    const w=s.wrong||[];
+    if(!w.length){ alert('아직 기록된 오답이 없어요. 테스트나 사진 채점을 한 번 하면 여기 모여요.'); return; }
+    state.sel=new Set(w); render();
+  };
+  document.getElementById('notyet').onclick=()=>{
+    const p=s.perfect||[];
+    const rest=s.items.map((_,i)=>i).filter(i=>p.indexOf(i)<0);
+    if(!rest.length){ alert('모든 문항을 한 번씩 100%로 맞혔어요. 남은 게 없습니다.'); return; }
+    state.sel=new Set(rest); render();
+  };
+  document.getElementById('shuf').onchange=e=>state.shuffle=e.target.checked;
+  app.querySelectorAll('[data-hi]').forEach(b=>b.onclick=()=>{
+    const g=document.getElementById('h-'+b.dataset.hi);
+    g.classList.toggle('hide');
+    b.textContent=g.classList.contains('hide')?'문항별로 보기':'접기';
+  });
+  app.querySelectorAll('[data-ps]').forEach(b=>b.onclick=()=>{
+    s.opts=Object.assign({},PRESETS[b.dataset.ps],{preset:b.dataset.ps}); persist(); render();
+  });
+  app.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{o.unit=b.dataset.u;persist();render();});
+  app.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{o.strict=b.dataset.st;persist();render();});
+  app.querySelectorAll('[data-o]').forEach(cb=>cb.onchange=()=>{
+    o[cb.dataset.o]=cb.checked; persist(); render();
+  });
+
+  const need=()=>{ if(!state.sel.size){ alert('문항을 하나 이상 골라주세요.'); return false; } return true; };
+  document.getElementById('t1').onclick=()=>{ if(!need())return; buildOrder(); state.practiceMode='flash'; go('practice'); };
+  document.getElementById('t2').onclick=()=>{ if(!need())return; state.round=1; buildOrder(); go('test'); };
+  document.getElementById('t3').onclick=()=>{ if(!need())return; go('print'); };
+  document.getElementById('t4').onclick=()=>{
+    if(!need())return;
+    state.photo={files:[],rows:[...state.sel].sort((a,b)=>a-b).map(()=>''),busy:false,msg:'',key:state.photo.key,done:false};
+    state.order=[...state.sel].sort((a,b)=>a-b);
+    state.round=1; go('photo');
+  };
+}
+
+function whenStr(ms){
+  const d=new Date(ms), now=new Date();
+  const sameDay=d.toDateString()===now.toDateString();
+  const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return sameDay?('오늘 '+hm):((d.getMonth()+1)+'. '+d.getDate()+'. '+hm);
+}
+function histHTML(s){
+  const H=s.history||[];
+  if(!H.length) return `<h3>최근 기록</h3>
+    <p style="color:var(--ink-soft);font-size:.93rem;margin:0">
+      아직 기록이 없어요. 테스트나 사진 채점을 하면 최근 3회까지 여기에 남습니다.</p>`;
+  return `<h3>최근 기록 <span style="font-weight:400;color:var(--ink-soft);font-size:.9rem">최근 3회</span></h3>
+    <div class="hist">${H.map((r,k)=>`
+      <div class="hrow">
+        <span class="when">${whenStr(r.at)}</span>
+        <span class="sc">${r.ok} / ${r.n} <small>· 평균 ${r.avg}% · ${esc(r.title||'')}</small></span>
+        <button class="btn btn-sm" data-hi="${k}">문항별로 보기</button>
+      </div>
+      <div class="grid hide" id="h-${k}">${r.items.map(it=>`
+        <span class="${it.v==='정답'?'g-ok':it.v==='거의 맞음'?'g-half':'g-no'}"
+              title="${esc(s.items[it.i]?s.items[it.i].q:'')} — ${it.v} ${it.sim}%">${it.i+1}</span>`).join('')}
+      </div>`).join('')}</div>
+    <div style="color:var(--ink-soft);font-size:.88rem;margin:6px 0 0">
+      번호를 누르면 그 회차에 맞힌 문항(초록)과 틀린 문항(주황)이 보여요.</div>`;
+}
+
+/* ---------- 세트 만들기 · 고치기 ---------- */
+function newEdit(){
+  state.edit={si:-1,name:'',items:[{q:'',a:''},{q:'',a:''},{q:'',a:''}],bulk:false,bulkText:''};
+  go('edit');
+}
+function editExisting(i){
+  const s=state.sets[i];
+  state.edit={si:i,name:s.name,items:s.items.map(it=>({q:it.q,a:it.a,key:(it.key||[]).slice()})),
+              bulk:false,bulkText:'',opts:s.opts};
+  go('edit');
+}
+function collectEdit(){
+  const e=state.edit;
+  const nm=document.getElementById('setname'); if(nm) e.name=nm.value;
+  app.querySelectorAll('[data-q]').forEach(t=>e.items[+t.dataset.q].q=t.value);
+  app.querySelectorAll('[data-a]').forEach(t=>e.items[+t.dataset.a].a=t.value);
+  app.querySelectorAll('[data-key]').forEach(t=>e.items[+t.dataset.key].key=
+    t.value.split(',').map(x=>x.trim()).filter(Boolean));
+  const bt=document.getElementById('bulk'); if(bt) e.bulkText=bt.value;
+}
+
+function renderEdit(){
+  const e=state.edit, isNew=e.si<0;
+  app.innerHTML=`
+    <button class="link" id="back">← ${isNew?'세트 목록':'세트로'}</button>
+    <h2>${isNew?'세트 만들기':'세트 고치기'}</h2>
+    <p class="lead">질문과 답안을 한 쌍씩 넣으세요. 답안은 채점 기준이 되니, 외우려는 문장 그대로 쓰는 게 좋아요.
+      꼭 들어가야 하는 말은 <b>핵심 요소</b>에 적어두면 다른 말보다 무겁게 칩니다.</p>
+
+    <label style="display:block;margin-bottom:6px;font-weight:600">세트 이름</label>
+    <input type="text" id="setname" value="${esc(e.name)}" placeholder="예) 한국사 3단원 서술형" style="max-width:420px">
+
+    <div class="row" style="margin:22px 0 12px"><div class="seg">
+      <button class="${e.bulk?'':'on'}" data-b="0">한 문항씩</button>
+      <button class="${e.bulk?'on':''}" data-b="1">한꺼번에 붙여넣기</button>
+    </div></div>
+
+    ${e.bulk ? `
+      <p style="color:var(--ink-soft);font-size:.93rem;margin:0 0 10px">
+        첫 줄에 질문, 다음 줄에 답안을 쓰고 문제 사이는 빈 줄로 띄우세요. 엑셀에서 복사한 탭 구분 표도 됩니다.</p>
+      <textarea id="bulk" rows="12" placeholder="3·1 운동의 의의를 서술하시오.
+전 민족이 참여한 최대 규모의 독립운동이다.
+
+세포막의 기능을 설명하시오.
+물질의 출입을 조절해 내부를 일정하게 유지한다.">${esc(e.bulkText)}</textarea>
+      <div class="row" style="margin-top:12px">
+        <button class="btn btn-go" id="conv">문항으로 바꾸기</button>
+        <span style="color:var(--ink-soft);font-size:.9rem">바꾸면 아래 목록에 채워지고, 거기서 더 고칠 수 있어요.</span>
+      </div>`
+    : `
+      <div class="picker">
+        <div class="picker-top">
+          <span style="font-size:.92rem;color:var(--ink-soft)">질문과 답안을 채우세요. 빈 칸은 저장할 때 빠집니다.</span>
+          <span class="cnt">${e.items.filter(it=>it.q.trim()&&it.a.trim()).length}문항</span>
+        </div>
+        <div class="q-list" style="max-height:none">
+          ${e.items.map((it,i)=>`
+            <div class="q-item" style="flex-direction:column;gap:7px;align-items:stretch">
+              <div class="row" style="justify-content:space-between">
+                <span class="num" style="font-weight:600">${i+1}</span>
+                <button class="link" data-rm="${i}" style="color:var(--orange)">이 문항 지우기</button>
+              </div>
+              <textarea data-q="${i}" rows="2" placeholder="질문">${esc(it.q)}</textarea>
+              <textarea data-a="${i}" rows="2" placeholder="답안">${esc(it.a)}</textarea>
+              <input type="text" data-key="${i}" placeholder="핵심 요소 (쉼표로 구분, 없으면 비워두세요)"
+                     value="${esc((it.key||[]).join(', '))}">
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="add">문항 추가</button></div>`}
+
+    <div class="row" style="margin-top:26px">
+      <button class="btn btn-go" id="save">저장하기</button>
+      ${isNew?'':`<button class="btn btn-sm" id="rmset" style="color:var(--orange);border-color:var(--orange)">세트 지우기</button>`}
+    </div>
+    <div class="note">양식 파일을 내려받아 메모장이나 엑셀에서 만든 뒤 올려도 됩니다.
+      <button class="link" id="tt2">메모장용 양식 받기</button> ·
+      <button class="link" id="ts2">엑셀용 양식 받기</button></div>`;
+
+  document.getElementById('back').onclick=()=>{ isNew?(state.si=-1,go('home')):go('detail'); };
+  app.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{
+    collectEdit(); e.bulk=b.dataset.b==='1'; render();
+  });
+  document.getElementById('tt2').onclick=()=>download('문제세트_양식.txt',templateTxt(),'text/plain;charset=utf-8');
+  document.getElementById('ts2').onclick=()=>download('문제세트_양식.tsv',templateTsv(),'text/tab-separated-values;charset=utf-8');
+
+  const addBtn=document.getElementById('add');
+  if(addBtn) addBtn.onclick=()=>{ collectEdit(); e.items.push({q:'',a:''}); render(); };
+  app.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{
+    collectEdit(); e.items.splice(+b.dataset.rm,1);
+    if(!e.items.length) e.items.push({q:'',a:''});
+    render();
+  });
+  const conv=document.getElementById('conv');
+  if(conv) conv.onclick=()=>{
+    collectEdit();
+    const parsed=parseFile(e.bulkText);
+    if(!parsed.length){ alert('질문·답안 쌍을 찾지 못했어요. 질문 줄과 답안 줄 사이는 붙이고, 문제 사이만 빈 줄로 띄워 주세요.'); return; }
+    const keep=e.items.filter(it=>it.q.trim()&&it.a.trim());
+    e.items=keep.concat(parsed); e.bulkText=''; e.bulk=false; render();
+  };
+  document.getElementById('save').onclick=async()=>{
+    collectEdit();
+    const name=e.name.trim();
+    const items=e.items.filter(it=>it.q.trim()&&it.a.trim())
+      .map(it=>{const o={q:it.q.trim(),a:it.a.trim()}; if(it.key&&it.key.length)o.key=it.key; return o;});
+    if(!name){ alert('세트 이름을 지어 주세요.'); return; }
+    if(!items.length){ alert('질문과 답안이 모두 채워진 문항이 최소 하나는 필요해요.'); return; }
+    if(e.si>=0){
+      const prev=state.sets[e.si], same=prev.items.length===items.length;
+      state.sets[e.si]={name,items,opts:e.opts,
+        wrong:same?(prev.wrong||[]):[],
+        perfect:same?(prev.perfect||[]):[],
+        history:same?(prev.history||[]):[]};
+      state.si=e.si;
+    }
+    else { state.sets.push({name,items,wrong:[]}); state.si=state.sets.length-1; }
+    await persist();
+    state.sel=new Set(items.map((_,i)=>i));
+    go('detail');
+  };
+  const rm=document.getElementById('rmset');
+  if(rm) rm.onclick=async()=>{
+    if(!confirm('"'+e.name+'" 세트를 지울까요? 되돌릴 수 없어요.')) return;
+    state.sets.splice(e.si,1); state.si=-1; await persist(); go('home');
+  };
+}
+
+/* ---------- 연습 ---------- */
+function renderPractice(){
+  const s=activeSet(), n=state.order.length;
+  if(state.practiceMode==='doc'){
+    app.innerHTML=`
+      <button class="link" id="back">← 돌아가기</button>
+      <h2>문서로 읽기</h2>
+      <div class="row" style="margin-bottom:14px"><div class="seg">
+        <button data-p="flash">플래시카드</button><button class="on" data-p="doc">문서</button></div></div>
+      <div class="doc">${state.order.map((oi,k)=>`
+        <div class="d"><b>${k+1}. ${esc(s.items[oi].q)}</b><span>${esc(s.items[oi].a)}</span></div>`).join('')}</div>`;
+  }else{
+    const it=s.items[state.order[state.idx]];
+    app.innerHTML=`
+      <button class="link" id="back">← 돌아가기</button>
+      <h2>플래시카드</h2>
+      <div class="row" style="margin-bottom:14px"><div class="seg">
+        <button class="on" data-p="flash">플래시카드</button><button data-p="doc">문서</button></div></div>
+      <div class="prog"><i style="width:${((state.idx+1)/n*100).toFixed(1)}%"></i></div>
+      <div style="color:var(--ink-soft);font-size:.9rem;margin-bottom:10px">${state.idx+1} / ${n}</div>
+      <div class="card ${state.flipped?'open':''}" id="card">
+        <div class="qt">${esc(it.q)}</div>
+        ${state.flipped?`<div class="at">${esc(it.a)}</div>`:`<div class="hint">카드를 눌러 답 보기</div>`}
+      </div>
+      <div class="row" style="margin-top:16px;justify-content:space-between">
+        <button class="btn" id="prev" ${state.idx===0?'disabled':''}>이전</button>
+        <button class="btn btn-go" id="next">${state.idx===n-1?'처음으로':'다음'}</button>
+      </div>`;
+    document.getElementById('card').onclick=()=>{state.flipped=!state.flipped;render();};
+    document.getElementById('prev').onclick=()=>{state.idx--;state.flipped=false;render();};
+    document.getElementById('next').onclick=()=>{state.idx=state.idx===n-1?0:state.idx+1;state.flipped=false;render();};
+  }
+  document.getElementById('back').onclick=()=>go('detail');
+  app.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{
+    state.practiceMode=b.dataset.p; state.idx=0; state.flipped=false; render();
+  });
+}
+
+/* ---------- 테스트 ---------- */
+function renderTest(){
+  const s=activeSet(), n=state.order.length, it=s.items[state.order[state.idx]];
+  app.innerHTML=`
+    <button class="link" id="back">← 돌아가기</button>
+    <h2>테스트</h2>
+    <div class="prog"><i style="width:${((state.idx+1)/n*100).toFixed(1)}%"></i></div>
+    <div style="color:var(--ink-soft);font-size:.9rem;margin-bottom:12px">${state.idx+1} / ${n}</div>
+    <div style="font-size:1.1rem;font-weight:600;margin-bottom:12px">${esc(it.q)}</div>
+    <textarea id="ans" rows="4" placeholder="외운 대로 적어보세요">${esc(state.answers[state.idx])}</textarea>
+    <div class="row" style="margin-top:14px;justify-content:space-between">
+      <button class="btn" id="prev" ${state.idx===0?'disabled':''}>이전</button>
+      ${state.idx===n-1
+        ? `<button class="btn btn-mark" id="submit">채점하기</button>`
+        : `<button class="btn btn-go" id="next">다음</button>`}
+    </div>`;
+  const ta=document.getElementById('ans');
+  ta.focus();
+  const keep=()=>state.answers[state.idx]=ta.value;
+  document.getElementById('back').onclick=()=>{keep();go('detail');};
+  document.getElementById('prev').onclick=()=>{keep();state.idx--;render();};
+  const nx=document.getElementById('next');
+  if(nx) nx.onclick=()=>{keep();state.idx++;render();};
+  const sb=document.getElementById('submit');
+  if(sb) sb.onclick=()=>{keep();gradeAll(state.answers,'테스트 결과');};
+}
+
+/* ---------- 채점 결과 (테스트·사진 공용) ---------- */
+function gradeAll(answers,title){
+  const s=activeSet(), o=opts(s);
+  state.results=state.order.map((oi,k)=>{
+    const g=grade(s.items[oi].a,answers[k]||'',o,s.items[oi].key);
+    return Object.assign({oi,q:s.items[oi].q,correct:s.items[oi].a,mine:answers[k]||''},g);
+  });
+  s.wrong=state.results.filter(r=>r.verdict!=='정답').map(r=>r.oi);
+  // 한 번이라도 100%로 맞힌 문항은 따로 기억해 둔다
+  s.perfect=s.perfect||[];
+  state.results.forEach(r=>{ if(r.sim===100&&s.perfect.indexOf(r.oi)<0) s.perfect.push(r.oi); });
+  // 최근 3회 기록
+  const ok=state.results.filter(r=>r.verdict==='정답').length;
+  s.history=[{at:Date.now(),title,n:state.results.length,ok,
+    avg:Math.round(state.results.reduce((a,r)=>a+r.sim,0)/(state.results.length||1)),
+    items:state.results.map(r=>({i:r.oi,v:r.verdict,sim:r.sim}))}]
+    .concat(s.history||[]).slice(0,3);
+  persist();
+  state.resultTitle=title;
+  go('result');
+}
+
+function diffHTML(ops,unit,side){
+  return ops.map((o,i)=>{
+    if(o.t==='keep')  return esc(side==='mine'?o.b:o.a);
+    if(o.t==='sub')   return `<span class="sub" title="${esc(o.label||'')}">${esc(side==='mine'?o.b:o.a)}</span>`;
+    if(o.t==='extra') return side==='mine'?`<span class="extra">${esc(o.b)}</span>`:'';
+    return side==='mine'?`<span class="miss" title="빠진 부분">＿</span>`:`<span class="miss">${esc(o.a)}</span>`;
+  }).filter(x=>x!=='').join(unit==='char'?'':' ');
+}
+function errList(errs){
+  if(!errs.length) return '<div class="okline">다른 곳이 없습니다.</div>';
+  const shown=errs.filter(e=>e.k!=='extra'), extra=errs.filter(e=>e.k==='extra');
+  let h='<div class="errhead">'+errs.length+'곳이 다릅니다</div><ul class="errs">';
+  shown.forEach(e=>{
+    h+='<li class="'+e.lv+'"><span class="tag">'+esc(e.label)+'</span>'+
+       (e.t==='miss'
+         ? '<b>'+esc(e.a)+'</b> 를 쓰지 않았어요'
+         : '<b>'+esc(e.a)+'</b> 를 <s>'+esc(e.b)+'</s> 로 썼어요')+'</li>';
+  });
+  if(extra.length) h+='<li class="gray"><span class="tag">군더더기</span>정답에 없는 말: '+
+    extra.map(e=>'<s>'+esc(e.b)+'</s>').join(', ')+'</li>';
+  return h+'</ul>';
+}
+
+function renderResult(){
+  const rs=state.results, s=activeSet(), o=opts(s);
+  const avg=Math.round(rs.reduce((a,r)=>a+r.sim,0)/(rs.length||1));
+  const ok=rs.filter(r=>r.verdict==='정답').length;
+  const half=rs.filter(r=>r.verdict==='거의 맞음').length;
+  const wrong=rs.filter(r=>r.verdict!=='정답');
+  const round=state.round||1;
+  app.innerHTML=`
+    <button class="link" id="back">← 세트로 돌아가기</button>
+    <h2>${esc(state.resultTitle)}${round>1?' · '+round+'회차':''}</h2>
+    <div class="score">
+      <b>${ok} / ${rs.length}</b> 문항을 맞혔어요
+      <div style="color:var(--ink-soft);font-size:.93rem">
+        거의 맞음 ${half} · 오답 ${rs.length-ok-half} · 평균 유사도 ${avg}%
+        (${PRESETS[o.preset||'general']?esc((PRESETS[o.preset]||PRESETS.general).label):'일반 서술형'} 기준,
+        ${o.unit==='word'?'단어':'글자'} 단위 · ${STRICT_LABEL[o.strict]||'보통'})
+      </div>
+    </div>
+    ${rs.map((r,k)=>`
+      <div class="res ${r.verdict==='정답'?'ok':r.verdict==='거의 맞음'?'half':'no'}">
+        <div class="top"><span class="vd">${r.verdict}</span>
+          <span class="sim">${r.errs.length?r.errs.length+'곳 다름 · ':''}유사도 ${r.sim}%</span></div>
+        <div class="qz">${k+1}. ${esc(r.q)}</div>
+        ${r.mine?errList(r.errs):'<div class="errhead">답을 쓰지 않았어요</div>'}
+        <div class="sbs">
+          <div class="col"><span class="lbl">정답</span>
+            <div class="txt">${r.mine?diffHTML(r.ops,o.unit,'correct'):esc(r.correct)}</div></div>
+          <div class="col"><span class="lbl">내가 쓴 답</span>
+            <div class="txt">${r.mine?diffHTML(r.ops,o.unit,'mine'):'<span style="color:var(--ink-soft)">비어 있음</span>'}</div></div>
+        </div>
+        ${r.dp&&r.A.length<=12&&r.B.length<=12
+          ? `<div class="row" style="margin-top:8px"><button class="btn btn-sm" data-dp="${k}">채점 과정 보기 (발표용)</button></div>
+             <div id="dp-${k}" class="dpwrap hide"></div>`:''}
+      </div>`).join('')}
+    ${wrong.length?`
+      <div class="row" style="margin-top:18px">
+        <button class="btn btn-mark" id="again">틀린 ${wrong.length}문항만 다시 풀기</button>
+        <button class="btn" id="back2">세트로 돌아가기</button>
+      </div>
+      <div style="color:var(--ink-soft);font-size:.9rem;margin-top:8px">
+        다 맞힐 때까지 틀린 것만 반복해서 나옵니다.</div>`
+    : `<div class="done">${round>1?round+'회차 만에 ':''}전부 맞혔습니다. 이 세트는 끝났어요.</div>
+       <div class="row"><button class="btn btn-go" id="back2">세트로 돌아가기</button></div>`}`;
+
+  app.querySelectorAll('[data-dp]').forEach(b=>b.onclick=()=>{
+    const k=+b.dataset.dp, box=document.getElementById('dp-'+k);
+    if(!box.innerHTML) box.innerHTML=dpTable(state.results[k]);
+    box.classList.toggle('hide'); b.textContent=box.classList.contains('hide')?'채점 과정 보기 (발표용)':'채점 과정 숨기기';
+  });
+  const backFn=()=>{state.round=1;go('detail');};
+  document.getElementById('back').onclick=backFn;
+  document.getElementById('back2').onclick=backFn;
+  const ag=document.getElementById('again');
+  if(ag) ag.onclick=()=>{
+    state.sel=new Set(wrong.map(r=>r.oi));
+    state.round=round+1;
+    buildOrder(); go('test');
+  };
+}
+
+// DP 표 + 최소 편집 경로
+function dpTable(r){
+  const {dp,A,B,path}=r;
+  const on=new Set(path.map(p=>p[0]+','+p[1]));
+  let h='<table class="dp"><tr><th></th><th>∅</th>'+B.map(b=>'<th>'+esc(b)+'</th>').join('')+'</tr>';
+  for(let i=0;i<=A.length;i++){
+    h+='<tr><th>'+(i===0?'∅':esc(A[i-1]))+'</th>';
+    for(let j=0;j<=B.length;j++) h+='<td class="'+(on.has(i+','+j)?'path':'')+'">'+dp[i][j]+'</td>';
+    h+='</tr>';
+  }
+  return h+'</table><div style="color:var(--ink-soft);font-size:.86rem;margin-top:6px">'+
+    '세로는 정답, 가로는 내가 쓴 답. 초록 칸이 최소 편집 경로예요. 오른쪽 맨 아래 값이 최소 편집 비용 '+r.cost+'입니다. '+
+    '핵심 요소는 '+KW_COST+', 숫자·기호는 '+NUM_COST+', 나머지는 1의 비용을 씁니다.</div>';
+}
+
+/* =========================================================
+   5. 시험지 만들기 (인쇄·PDF·워드)
+   ========================================================= */
+function buildSheet(withAnswer){
+  const s=activeSet();
+  const idx=[...state.sel].sort((a,b)=>a-b);
+  const title=s.name+(withAnswer?' — 답안 포함':' — 답안지');
+  let body='';
+  idx.forEach((oi,k)=>{
+    const it=s.items[oi];
+    body+='<div class="qa"><p class="q"><span class="no">'+(k+1)+'.</span>'+esc(it.q)+'</p>';
+    if(withAnswer){
+      body+='<p class="a">'+esc(it.a)+'</p>';
+    }else{
+      let lines='';
+      for(let i=0;i<answerLines(it.a);i++) lines+='<div class="ln"></div>';
+      body+='<div class="box">'+lines+'</div>';
+    }
+    body+='</div>';
+  });
+  return '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>'+esc(title)+'</title><style>'+
+    '@page{size:A4;margin:18mm 16mm}'+
+    'body{font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;font-size:11.5pt;line-height:1.9;color:#000;margin:0;padding:20px}'+
+    '.sheet{max-width:760px;margin:0 auto}'+
+    'h1{font-size:16pt;margin:0 0 4px;border-bottom:2px solid #1f7a4d;padding-bottom:8px}'+
+    '.meta{font-size:10pt;color:#555;margin:0 0 6px}'+
+    '.fields{font-size:11pt;margin:14px 0 20px}'+
+    '.fields span{display:inline-block;margin-right:26px}'+
+    '.fields u{display:inline-block;min-width:90px;text-decoration:none;border-bottom:1px solid #888}'+
+    '.guide{font-size:9.5pt;color:#555;background:#f4f7f4;border-left:3px solid #1f7a4d;padding:7px 11px;margin-bottom:18px}'+
+    '.qa{margin:0 0 18px;page-break-inside:avoid}'+
+    '.q{margin:0 0 7px;font-weight:600}'+
+    '.no{display:inline-block;min-width:24px;color:#1f7a4d}'+
+    '.a{margin:0 0 0 24px;padding:7px 11px;background:#f4f7f4;border-left:3px solid #1f7a4d}'+
+    '.box{margin-left:24px}'+
+    '.ln{border-bottom:1px solid #bbb;height:26px}'+
+    '.bar{margin:0 0 16px;padding:9px 0;border-bottom:1px dashed #bbb}'+
+    '@media print{.bar{display:none}body{padding:0}}'+
+    '</style></head><body><div class="sheet">'+
+    '<div class="bar"><button onclick="window.print()">인쇄 / PDF로 저장</button> '+
+    '<span style="font-size:10pt;color:#555">인쇄 창에서 "대상"을 <b>PDF로 저장</b>으로 바꾸면 PDF가 됩니다. 이 줄은 인쇄되지 않아요.</span></div>'+
+    '<h1>'+esc(s.name)+'</h1><p class="meta">'+(withAnswer?'답안 포함본':'답안 작성용')+' · '+idx.length+'문항 · '+todayStr()+'</p>'+
+    '<div class="fields"><span>이름 <u></u></span><span>날짜 <u></u></span><span>점수 <u></u></span></div>'+
+    (withAnswer?'':'<div class="guide">번호 옆 칸에 답을 쓰세요. 나중에 사진으로 채점할 때 번호를 보고 답을 찾으니, 번호와 답이 나란히 보이게 써주세요.</div>')+
+    body+'</div></body></html>';
+}
+
+function renderPrint(){
+  const s=activeSet(), cnt=state.sel.size;
+  app.innerHTML=`
+    <button class="link" id="back">← 돌아가기</button>
+    <h2>시험지 만들기</h2>
+    <p class="lead">고른 ${cnt}문항으로 종이 버전을 만듭니다. 두 가지를 각각 받을 수 있어요.</p>
+    <div class="row" style="margin-bottom:6px"><div class="seg">
+      <button class="${state.print.withAnswer?'on':''}" data-w="1">답안 포함본</button>
+      <button class="${state.print.withAnswer?'':'on'}" data-w="0">답안 작성용</button>
+    </div></div>
+    <p style="color:var(--ink-soft);font-size:.93rem;margin:0 0 18px">
+      ${state.print.withAnswer
+        ? '질문과 답이 함께 나옵니다. 외울 때 읽는 용도예요.'
+        : '질문 아래에 빈 줄만 나옵니다. 답 길이에 맞춰 줄 수가 자동으로 정해져요.'}
+    </p>
+    <div class="row">
+      <button class="btn btn-go" id="pr">인쇄 / PDF로 저장</button>
+      <button class="btn" id="dh">HTML로 받기</button>
+      <button class="btn" id="dw">워드(.doc)로 받기</button>
+      <button class="btn" id="both">두 버전 한 번에 받기</button>
+    </div>
+    <div class="note">
+      <b>PDF로 만드는 법</b> — 인쇄 창이 열리면 "대상"(또는 프린터)을 <b>PDF로 저장</b>으로 바꾸면 됩니다.
+      브라우저가 새 창을 막으면 HTML로 받은 뒤 그 파일을 열어 인쇄하세요.<br>
+      <b>고치고 싶다면</b> — 워드(.doc) 파일은 워드·한글에서 바로 열려 문구나 줄 수를 손볼 수 있어요.
+    </div>
+    <h3>미리보기</h3>
+    <iframe id="pv" style="width:100%;height:460px;border:1.5px solid var(--line);border-radius:11px;background:#fff"></iframe>`;
+  document.getElementById('back').onclick=()=>go('detail');
+  app.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{state.print.withAnswer=b.dataset.w==='1';render();});
+
+  const html=buildSheet(state.print.withAnswer);
+  const fname=s.name.replace(/[\\/:*?"<>|]/g,'_')+(state.print.withAnswer?'_답안포함':'_답안지');
+  document.getElementById('pv').srcdoc=html;
+  document.getElementById('pr').onclick=()=>{
+    const w=window.open('','_blank');
+    if(!w){ alert('새 창이 막혀 있어요. "HTML로 받기"로 내려받은 뒤 그 파일을 열어 인쇄해 주세요.'); return; }
+    w.document.write(html); w.document.close();
+  };
+  document.getElementById('dh').onclick=()=>download(fname+'.html',html,'text/html;charset=utf-8');
+  document.getElementById('dw').onclick=()=>download(fname+'.doc',html,'application/msword;charset=utf-8');
+  document.getElementById('both').onclick=()=>{
+    const base=s.name.replace(/[\\/:*?"<>|]/g,'_');
+    download(base+'_답안포함.html',buildSheet(true),'text/html;charset=utf-8');
+    setTimeout(()=>download(base+'_답안지.html',buildSheet(false),'text/html;charset=utf-8'),500);
+  };
+}
+
+/* =========================================================
+   6. 사진으로 채점 — AI는 손글씨를 옮겨 적기만, 채점은 편집 거리
+   ========================================================= */
+async function readFileB64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(',')[1]);
+    r.onerror=()=>rej(new Error('파일을 읽지 못했어요'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function callClaude(content,key){
+  const headers={'Content-Type':'application/json'};
+  if(key){
+    headers['x-api-key']=key;
+    headers['anthropic-version']='2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access']='true';
+  }
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers,
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content}]})
+  });
+  if(!res.ok){
+    const t=await res.text().catch(()=>'');
+    throw new Error('요청 실패 ('+res.status+') '+t.slice(0,160));
+  }
+  const data=await res.json();
+  return (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+}
+
+function looseJSON(text){
+  let t=String(text).replace(/```json|```/g,'').trim();
+  const s=t.indexOf('{'); if(s>=0) t=t.slice(s);
+  try{ return JSON.parse(t); }catch(e){}
+  const cut=t.lastIndexOf('",');
+  if(cut>0){ try{ return JSON.parse(t.slice(0,cut+1)+'}'); }catch(e){} }
+  const obj={}; const re=/"(\d+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g; let m;
+  while((m=re.exec(t))) obj[m[1]]=m[2].replace(/\\"/g,'"');
+  return Object.keys(obj).length?obj:null;
+}
+
+async function transcribe(){
+  const s=activeSet(), p=state.photo;
+  if(!p.files.length){ alert('먼저 답안지 사진이나 PDF를 올려주세요.'); return; }
+  p.busy=true; p.msg='사진에서 손글씨를 옮겨 적는 중'; render();
+
+  // 문항 번호와 질문만 알려줌. 정답은 절대 보내지 않아야 AI가 답을 "고쳐" 적지 않음.
+  const qlist=state.order.map((oi,k)=>(k+1)+'. '+s.items[oi].q).join('\n');
+  const rule=
+    '이 이미지는 학생이 손으로 쓴 답안지야. 번호별로 학생이 쓴 답을 보이는 그대로 옮겨 적어.\n'+
+    '규칙: 맞춤법이나 내용을 고치지 말 것. 빠진 말을 채워 넣지 말 것. '+
+    '알아볼 수 없는 글자는 ?로 표시. 비어 있는 번호는 아예 넣지 말 것.\n'+
+    '설명 없이 JSON만 출력해. 형식: {"1":"학생이 쓴 답","2":"..."}\n\n'+
+    '문항 목록(참고용, 여기에 정답은 없음):\n'+qlist;
+
+  try{
+    for(let i=0;i<p.files.length;i++){
+      const f=p.files[i];
+      p.msg='옮겨 적는 중 ('+(i+1)+'/'+p.files.length+')'; render();
+      const b64=await readFileB64(f);
+      const block = f.type==='application/pdf'
+        ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
+        : {type:'image',source:{type:'base64',media_type:f.type||'image/jpeg',data:b64}};
+      const out=await callClaude([block,{type:'text',text:rule}],p.key);
+      const obj=looseJSON(out);
+      if(!obj) throw new Error('결과를 읽지 못했어요. 사진이 흐리거나 글씨가 잘렸을 수 있어요.');
+      Object.keys(obj).forEach(kk=>{
+        const n=parseInt(String(kk).replace(/[^0-9]/g,''),10);
+        const v=String(obj[kk]==null?'':obj[kk]).trim();
+        if(n>=1&&n<=p.rows.length&&v) p.rows[n-1]=v;
+      });
+    }
+    p.done=true; p.msg='';
+  }catch(e){
+    p.msg=''; p.err=e.message;
+  }
+  p.busy=false; render();
+}
+
+function renderPhoto(){
+  const s=activeSet(), o=opts(s), p=state.photo;
+  const filled=p.rows.filter(r=>r.trim()).length;
+  app.innerHTML=`
+    <button class="link" id="back">← 돌아가기</button>
+    <h2>사진으로 채점</h2>
+    <p class="lead">시험지에 손으로 쓴 답을 찍어 올리면 번호별로 옮겨 적어 표에 채워요. 옮겨 적은 글을 확인·수정한 뒤 채점합니다.</p>
+    <div class="note">손글씨 자동 인식은 외부 AI 서비스의 API 키가 있을 때만 동작합니다.
+      키가 없어도 <b>아래 표에 직접 옮겨 적으면 채점은 똑같이</b> 됩니다 — 종이로 풀고 결과만 확인하는 용도로 쓰세요.
+      채점 자체는 이 프로그램의 편집 거리 계산이 하므로 AI 없이도 점수는 나옵니다.</div>
+
+    <div class="row">
+      <button class="btn btn-go" id="cam">카메라로 찍기</button>
+      <button class="btn" id="pick">사진·PDF 고르기</button>
+      ${p.files.length?`<button class="btn btn-sm" id="clear">사진 비우기</button>`:''}
+    </div>
+    <div class="thumbs">${p.files.map((f,i)=>
+      f.type==='application/pdf'
+        ? `<figure><div style="width:104px;height:104px;border:1.5px solid var(--line);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:.82rem">PDF</div><figcaption>${esc(f.name)}</figcaption></figure>`
+        : `<figure><img src="${URL.createObjectURL(f)}" alt="올린 답안지 ${i+1}"><figcaption>${esc(f.name)}</figcaption></figure>`
+    ).join('')}</div>
+
+    ${p.files.length?`<div class="row" style="margin:6px 0 4px">
+      <button class="btn btn-mark" id="ocr" ${p.busy?'disabled':''}>
+        ${p.busy?'<span class="spin"></span> '+esc(p.msg):'손글씨 옮겨 적기'}</button>
+      <span style="color:var(--ink-soft);font-size:.9rem">사진 한 장당 몇 초 걸려요.</span>
+    </div>`:''}
+
+    ${p.err?`<div class="warn"><b>옮겨 적지 못했어요.</b> ${esc(p.err)}<br>
+      아래 표에 직접 타이핑해도 채점은 똑같이 됩니다.
+      ${/401|403|CORS|Failed to fetch|요청 실패/.test(p.err)?'<br>이 파일을 내 컴퓨터나 웹사이트에서 열었다면, 아래에 본인 API 키를 넣어야 손글씨 인식이 동작해요.':''}</div>
+      <div class="row" style="margin-bottom:6px">
+        <input type="text" id="key" placeholder="Anthropic API 키 (sk-ant-...)" value="${esc(p.key)}" style="max-width:340px">
+        <button class="btn btn-sm" id="savekey">키 적용</button>
+      </div>
+      <div style="color:var(--ink-soft);font-size:.86rem;margin-bottom:16px">키는 이 화면에만 잠깐 담기고 파일에 저장되지 않아요.</div>`:''}
+
+    <h3>옮겨 적은 답안 <span style="font-weight:400;color:var(--ink-soft);font-size:.9rem">${filled} / ${p.rows.length}문항 채워짐</span></h3>
+    <table class="sheet"><tr><th>번호</th><th>문항</th><th>내가 쓴 답 (고칠 수 있어요)</th></tr>
+      ${state.order.map((oi,k)=>`<tr>
+        <td class="n">${k+1}</td>
+        <td style="max-width:210px">${esc(s.items[oi].q)}</td>
+        <td><textarea data-k="${k}" rows="2" placeholder="비어 있음">${esc(p.rows[k])}</textarea></td>
+      </tr>`).join('')}
+    </table>
+
+    <div class="note">채점은 AI가 하지 않아요. AI는 사진의 글씨를 글자로 바꾸기만 하고, 점수는 편집 거리 계산으로 매깁니다.
+      그래서 표의 글을 고치면 점수도 그대로 다시 계산돼요. 손글씨는 띄어쓰기가 흔들리니 <b>글자 단위</b> 채점을 권해요.</div>
+
+    <div class="row" style="margin-top:14px">
+      <div class="seg">
+        <button class="${o.unit==='char'?'on':''}" data-u="char">글자 단위</button>
+        <button class="${o.unit==='word'?'on':''}" data-u="word">단어 단위</button>
+      </div>
+      <button class="btn btn-mark" id="dogr">채점하기</button>
+    </div>`;
+
+  document.getElementById('back').onclick=()=>go('detail');
+  document.getElementById('cam').onclick=()=>camInput.click();
+  document.getElementById('pick').onclick=()=>photoInput.click();
+  const cl=document.getElementById('clear');
+  if(cl) cl.onclick=()=>{p.files=[];p.err='';render();};
+  const oc=document.getElementById('ocr');
+  if(oc) oc.onclick=transcribe;
+  const sk=document.getElementById('savekey');
+  if(sk) sk.onclick=()=>{p.key=document.getElementById('key').value.trim();p.err='';transcribe();};
+  app.querySelectorAll('.sheet textarea').forEach(t=>t.oninput=()=>p.rows[+t.dataset.k]=t.value);
+  app.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{o.unit=b.dataset.u;persist();render();});
+  document.getElementById('dogr').onclick=()=>{
+    if(!p.rows.some(r=>r.trim())){ alert('채점할 답이 없어요. 사진을 옮겨 적거나 표에 직접 써주세요.'); return; }
+    gradeAll(p.rows,'사진 채점 결과');
+  };
+}
+
+/* =========================================================
+   7. 입력 연결 · 예제 · 시작
+   ========================================================= */
+const fileInput=document.getElementById('fileInput');
+const photoInput=document.getElementById('photoInput');
+const camInput=document.getElementById('camInput');
+
+function importSets(arr){
+  let n=0;
+  arr.forEach(s=>{
+    if(!s||!Array.isArray(s.items)||!s.items.length) return;
+    const items=s.items.filter(it=>it&&it.q&&it.a);
+    if(!items.length) return;
+    state.sets.push({name:String(s.name||'가져온 세트'),items,
+      wrong:s.wrong||[],perfect:s.perfect||[],history:(s.history||[]).slice(0,3),opts:s.opts});
+    n++;
+  });
+  return n;
+}
+
+fileInput.onchange=async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const text=await f.text();
+  if(/\.json$/i.test(f.name)||/^\s*\[/.test(text)){        // 세트 묶음 파일
+    let arr=null; try{ arr=JSON.parse(text); }catch(err){}
+    if(!Array.isArray(arr)){ alert('세트 파일을 읽지 못했어요. 내보내기로 만든 .json인지 확인해 주세요.'); }
+    else{
+      const n=importSets(arr);
+      if(!n) alert('가져올 세트가 없었어요.');
+      else { await persist(); render(); }
+    }
+    fileInput.value=''; return;
+  }
+  const items=parseFile(text);
+  if(!items.length){ alert('질문·답안 쌍을 찾지 못했어요. 빈 줄 구분이나 탭 구분 형식인지 확인해 주세요.'); }
+  else{
+    state.sets.push({name:f.name.replace(/\.[^.]+$/,''),items,wrong:[]});
+    await persist(); render();
+  }
+  fileInput.value='';
+};
+function addPhotos(list){
+  const p=state.photo;
+  p.files=p.files.concat([...list]); p.err=''; render();
+}
+photoInput.onchange=e=>{ if(e.target.files.length) addPhotos(e.target.files); photoInput.value=''; };
+camInput.onchange=e=>{ if(e.target.files.length) addPhotos(e.target.files); camInput.value=''; };
+
+async function addSample(){
+  state.sets.push({name:'예제 — 서술형 암기',wrong:[],items:[
+    {q:'3·1 운동의 의의를 서술하시오.',a:'전 민족이 참여한 최대 규모의 독립운동으로 대한민국 임시정부 수립의 계기가 되었다.'},
+    {q:'세포막의 기능을 설명하시오.',a:'물질의 출입을 조절하여 세포 내부를 일정하게 유지한다.'},
+    {q:'편집 거리란 무엇인가?',a:'한 문자열을 다른 문자열로 바꾸는 데 필요한 최소 편집 횟수이다.'},
+    {q:'동적 계획법의 핵심 아이디어는?',a:'작은 문제의 답을 저장해 두고 큰 문제를 풀 때 다시 쓰는 것이다.'},
+    {q:'광합성이 일어나는 장소와 산물은?',a:'엽록체에서 일어나며 포도당과 산소를 만든다.'},
+    {q:'수요와 공급이 만나는 점을 무엇이라 하는가?',a:'시장 가격이 결정되는 균형점이라고 한다.'},
+    {q:'물의 순환 과정을 순서대로 쓰시오.',a:'증발하여 응결한 뒤 강수로 내리고 다시 흘러 모인다.'},
+    {q:'삼권 분립의 목적은 무엇인가?',a:'권력이 한곳에 쏠리지 않게 나누어 서로 견제하기 위한 것이다.'}
+  ]});
+  await persist(); render();
+}
+
+(async()=>{
+  const saved=await Store.load();
+  if(saved&&Array.isArray(saved)) state.sets=saved;
+  // 웹에 올린 경우, 같은 폴더의 sets.json 을 기본 세트로 읽어온다.
+  // (내 컴퓨터에서 파일을 직접 연 file:// 상태에서는 브라우저가 막으므로 조용히 건너뜀)
+  if(!state.sets.length){
+    try{
+      const res=await fetch('sets.json',{cache:'no-store'});
+      if(res.ok){
+        const arr=await res.json();
+        if(Array.isArray(arr)&&importSets(arr)) await persist();
+      }
+    }catch(err){}
+  }
+  render();
+})();
+</script>
+</body>
+</html>
